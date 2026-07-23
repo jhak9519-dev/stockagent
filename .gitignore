@@ -1,0 +1,33 @@
+# 비밀 키·민감정보 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+
+# 파이썬
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 생성물·캐시
+output/
+cache/
+*.pdf
+!README*.pdf
+
+# 웹 발행 폴더 (별도 git 저장소로 관리)
+web/
+
+# 로그·임시
+logs/
+scratchpad/
+
+# 로컬 개인 설정
+.claude/settings.local.json
+
+# 툴 세션·상태 (oh-my-claudecode)
+.omc/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,246 @@
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  /* 인쇄(PDF): 자연 흐름 — 짧은 섹션은 한 페이지에 이어 붙이고, 넘치면 다음 페이지로.
+     표·차트·박스는 경계에서 안 잘리게 하고, 섹션 제목이 페이지 끝에 홀로 남지 않게 한다. 웹 화면엔 영향 없음 */
+  @media print {
+    h2.section { page-break-after: avoid; }
+    table, img.chart, .opinion-box, .summary, .risks, .body-text { page-break-inside: avoid; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    color: #222; font-size: 10.5pt; line-height: 1.6; margin: 0;
+  }
+  .header { border-bottom: 3px solid #1f4e79; padding-bottom: 10px; margin-bottom: 16px; }
+  .eyebrow { color: #1f4e79; font-weight: 700; letter-spacing: 2px; font-size: 8.5pt; }
+  .title { font-size: 20pt; font-weight: 800; margin: 4px 0 2px; }
+  .subtitle { color: #666; font-size: 9pt; }
+  .meta-row { display: flex; gap: 18px; margin-top: 8px; font-size: 9pt; color: #444; flex-wrap: wrap; }
+  .meta-row b { color: #1f4e79; }
+
+  .opinion-box {
+    display: flex; gap: 0; border: 1px solid #dcdcdc; border-radius: 6px;
+    overflow: hidden; margin: 14px 0 18px;
+  }
+  .opinion-cell { flex: 1; padding: 10px 14px; border-right: 1px solid #eee; }
+  .opinion-cell:last-child { border-right: none; }
+  .opinion-cell .k { font-size: 8pt; color: #888; }
+  .opinion-cell .v { font-size: 14pt; font-weight: 800; margin-top: 2px; }
+  .buy { color: #c0504d; } .hold { color: #d9a441; } .sell { color: #2e75b6; }
+  .hold-ret { font-size: 10pt; font-weight: 700; border-radius: 20px; padding: 2px 10px; vertical-align: middle; }
+  .hold-ret.buy { background: #fdeceb; } .hold-ret.sell { background: #eaf1f8; }
+
+  .block { margin-bottom: 16px; }   /* 주제 블록 — 웹에선 카드로 스타일됨 */
+  h2.section {
+    font-size: 12.5pt; color: #1f4e79; border-left: 4px solid #1f4e79;
+    padding-left: 8px; margin: 20px 0 8px;
+  }
+  .summary { background: #f5f8fb; border-radius: 5px; padding: 10px 12px; margin-bottom: 8px; }
+  .summary b, .body-text b { color: #c0504d; }  /* AI가 마킹한 핵심 구절 강조 (빨강) */
+  .bullets { margin: 6px 0 8px; padding-left: 18px; }
+  .bullets li { margin-bottom: 3px; }
+  .body-text { text-align: justify; white-space: pre-line; }
+  img.chart { width: 100%; margin: 8px 0; border: 1px solid #eee; border-radius: 4px; }
+
+  table.metrics { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.5pt; }
+  table.metrics td { border: 1px solid #e5e5e5; padding: 5px 8px; }
+  table.metrics td.k { background: #f7f7f7; color: #555; width: 22%; }
+
+  .risks { background: #fff6f5; border: 1px solid #f0d8d5; border-radius: 5px; padding: 10px 12px; }
+  .disclaimer {
+    margin-top: 22px; padding-top: 10px; border-top: 1px solid #ddd;
+    font-size: 7.5pt; color: #999; line-height: 1.5;
+  }
+</style>
+
+<div class="header">
+  <div class="eyebrow">STOCK AGENT · 리서치 리포트</div>
+  <div class="title">{{ name }} <span style="font-size:12pt;color:#888;">({{ ticker }})</span>{% if hold_return %} <span class="hold-ret {{ hold_class }}">매수가 대비 {{ hold_return }}</span>{% endif %}</div>
+  <div class="subtitle">{{ sector }} · {{ market_label }}</div>
+  <div class="meta-row">
+    <div>발행일 <b>{{ generated_at }}</b></div>
+    {% if price_date %}<div>시세 기준일 <b>{{ price_date }}</b></div>{% endif %}
+    <div>현재가 <b>{{ price }}</b></div>
+    <div>시가총액 <b>{{ market_cap }}</b></div>
+    {% if earnings_date %}<div>실적 발표(예정) <b>{{ earnings_date }}</b></div>{% endif %}
+    {% if screen_score %}<div>자동발굴 점수 <b>{{ screen_score }}</b>{% if screen_grade %} ({{ screen_grade }}){% endif %}</div>{% endif %}
+    {% if pick_count and pick_count > 1 %}<div>발굴 <b>누적 {{ pick_count }}회{% if pick_streak > 1 %} · {{ pick_streak }}회 연속{% endif %}</b></div>{% endif %}
+  </div>
+  {% if screen_reasons %}
+  <div style="font-size:8.5pt;color:#888;margin-top:3px;">선정 근거 · {{ screen_reasons|join(" · ") }}</div>
+  {% endif %}
+  {% if prev_change %}
+  <div style="font-size:8.5pt;color:#c0504d;margin-top:3px;">🔄 {{ prev_change }}</div>
+  {% endif %}
+</div>
+
+<div class="opinion-box">
+  <div class="opinion-cell">
+    <div class="k">투자의견</div>
+    <div class="v {{ opinion_class }}">{{ opinion }}</div>
+    {% if entry_stance %}<div style="font-size:8pt;color:#888;margin-top:2px;">{{ entry_stance }}</div>{% endif %}
+  </div>
+  <div class="opinion-cell">
+    <div class="k">매수 희망 구간 (지지선 기반)</div>
+    <div class="v" style="font-size:10.5pt;">{{ buy_price }}</div>
+  </div>
+  <div class="opinion-cell">
+    <div class="k">목표주가</div>
+    <div class="v {{ target_class }}" style="font-size:11.5pt;">{{ target_price }}</div>
+  </div>
+  <div class="opinion-cell">
+    <div class="k">손절가</div>
+    <div class="v sell" style="font-size:11.5pt;">{{ stop_loss }}</div>
+  </div>
+  <div class="opinion-cell">
+    <div class="k">상승여력</div>
+    <div class="v" style="font-size:12.5pt;">{{ upside }}</div>
+  </div>
+</div>
+<div style="font-size:8.5pt;color:#999;margin:-10px 0 14px;">
+  · 매수 구간 산출: {{ buy_basis or "이동평균 지지선 기반" }}, 손절가는 구간 하단에서 종목 변동성(ATR) 기반으로 산출하며, 매매 권유가 아닙니다.
+  {% if rr_text %}<br>· {{ rr_text }}{% endif %}
+</div>
+{% if overheat %}
+<div style="font-size:9.5pt;color:#c0504d;background:#fff6f5;border:1px solid #f0d8d5;border-radius:5px;padding:7px 12px;margin:-6px 0 14px;">
+  ⚠ <b>{{ overheat }}</b> — 급등 직후 고점 부근 진입은 변동성 위험이 큽니다.
+</div>
+{% endif %}
+
+<section class="block">
+<h2 class="section">투자 요약</h2>
+<div class="body-text">{{ thesis|emph }}</div>
+{% if chart_price %}<img class="chart" src="{{ chart_price }}" alt="주가 차트">{% endif %}
+</section>
+
+<section class="block">
+<h2 class="section">{{ market.title }}</h2>
+<div class="summary">{{ market.summary|emph }}</div>
+{% if market.bullets %}<ul class="bullets">{% for b in market.bullets %}<li>{{ b|emph }}</li>{% endfor %}</ul>{% endif %}
+<div class="body-text">{{ market.body|emph }}</div>
+</section>
+
+{% if tech_table or market.technical_outlook %}
+<section class="block">
+<h2 class="section">차트 분석 · 기술적 전망</h2>
+{% if tech_table %}
+<table class="metrics">
+  {% for k, v in tech_table %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+  {% if level_res %}<tr><td class="k">저항선 (위)</td><td>{{ level_res }}</td></tr>{% endif %}
+  {% if level_sup %}<tr><td class="k">지지선 (아래)</td><td>{{ level_sup }}</td></tr>{% endif %}
+</table>
+{% endif %}
+{% if market.technical_outlook %}<div class="body-text">{{ market.technical_outlook|emph }}</div>{% endif %}
+</section>
+{% endif %}
+
+{% if flows_rows %}
+<section class="block">
+<h2 class="section">수급 동향 (투자자별 매매)</h2>
+<table class="metrics">
+  {% for k, v in flows_rows %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+</table>
+{% if flows_daily %}
+<table class="metrics" style="margin-top:6px;">
+  <tr><td class="k">일자</td><td class="k">종가</td><td class="k">등락률</td><td class="k">개인</td><td class="k">외국인</td><td class="k">기관</td></tr>
+  {% for date, close, chg, ind, fr, inst in flows_daily %}
+  <tr><td class="k">{{ date }}</td><td>{{ close }}</td><td class="{{ chg[1] }}">{{ chg[0] }}</td><td class="{{ ind[1] }}">{{ ind[0] }}</td><td class="{{ fr[1] }}">{{ fr[0] }}</td><td class="{{ inst[1] }}">{{ inst[0] }}</td></tr>
+  {% endfor %}
+</table>
+<div style="font-size:8pt;color:#999;margin:1px 0 6px;">· 종가·등락률과 투자자별 순매수 추정(억원) · 최근 7거래일 · 상승/순매수(빨강)·하락/순매도(파랑)</div>
+{% endif %}
+{% if flows_daily_us %}
+<table class="metrics" style="margin-top:6px;">
+  <tr><td class="k">일자</td><td class="k">종가</td><td class="k">등락률</td><td class="k">거래량</td></tr>
+  {% for date, close, chg, vol in flows_daily_us %}
+  <tr><td class="k">{{ date }}</td><td>{{ close }}</td><td class="{{ chg[1] }}">{{ chg[0] }}</td><td>{{ vol }}</td></tr>
+  {% endfor %}
+</table>
+<div style="font-size:8pt;color:#999;margin:1px 0 6px;">· 일별 종가·등락률·거래량 · 최근 7거래일 · 상승(빨강)·하락(파랑)</div>
+{% endif %}
+{% if flows_note %}<div style="font-size:8.5pt;color:#999;margin:2px 0 8px;">{{ flows_note }}</div>{% endif %}
+</section>
+{% endif %}
+
+<section class="block">
+<h2 class="section">{{ fundamental.title }}</h2>
+<div class="summary">{{ fundamental.summary|emph }}</div>
+{% if fundamental.bullets %}<ul class="bullets">{% for b in fundamental.bullets %}<li>{{ b|emph }}</li>{% endfor %}</ul>{% endif %}
+{% if chart_financial %}<img class="chart" src="{{ chart_financial }}" alt="재무 차트">{% endif %}
+<div class="body-text">{{ fundamental.body|emph }}</div>
+</section>
+
+<section class="block">
+<h2 class="section">밸류에이션 및 투자의견</h2>
+<table class="metrics">
+  <tr><td class="k">PER</td><td>{{ per }}</td><td class="k">PBR</td><td>{{ pbr }}</td></tr>
+  <tr><td class="k">EPS</td><td>{{ eps }}</td><td class="k">BPS</td><td>{{ bps }}</td></tr>
+  <tr><td class="k">52주 최고</td><td>{{ high_52w }}</td><td class="k">52주 최저</td><td>{{ low_52w }}</td></tr>
+  <tr><td class="k">배당수익률</td><td>{{ dividend_yield }}</td><td class="k">시세 기준일</td><td>{{ price_date or "N/A" }}</td></tr>
+  {% if op_cash_flow or free_cash_flow %}<tr><td class="k">영업현금흐름</td><td>{{ op_cash_flow or "N/A" }}</td><td class="k">잉여현금흐름(FCF)</td><td>{{ free_cash_flow or "N/A" }}</td></tr>{% endif %}
+</table>
+{% if valuation_formula %}
+<p style="font-size:9.5pt;color:#444;margin:2px 0 8px;">
+  <b style="color:#1f4e79;">목표주가 산출</b> · {{ valuation_formula }}
+</p>
+{% endif %}
+{% if scenario_rows %}
+<table class="metrics">
+  <tr><td class="k">시나리오</td><td class="k">12개월 목표가</td><td class="k">확률</td><td class="k">핵심 조건</td></tr>
+  {% for name, price, prob, basis in scenario_rows %}
+  <tr><td>{{ name }}</td><td>{{ price }}</td><td>{{ prob }}</td><td style="font-size:8.5pt;">{{ basis }}</td></tr>
+  {% endfor %}
+</table>
+{% if expected_line %}
+<p style="font-size:9.5pt;color:#444;margin:2px 0 8px;"><b style="color:#1f4e79;">기대값</b> · {{ expected_line }}</p>
+{% endif %}
+{% endif %}
+{% if consensus_target or consensus_rating %}
+<p style="font-size:9.5pt;color:#444;margin:2px 0 8px;">
+  <b style="color:#1f4e79;">시장 컨센서스(애널리스트)</b> ·
+  목표주가 <b>{{ consensus_target }}</b>{% if consensus_rating %} · 투자의견 <b>{{ consensus_rating }}</b>{% endif %}{% if analyst_count %} · {{ analyst_count }}개 기관{% endif %}
+</p>
+{% endif %}
+<div class="body-text">{{ valuation.rationale|emph }}</div>
+</section>
+
+{% if valuation.strategy %}
+<section class="block">
+<h2 class="section">매매 전략 (추세 기반)</h2>
+<div class="summary">{{ valuation.strategy|emph }}</div>
+<div style="font-size:8pt;color:#999;margin:1px 0 6px;">· 종목의 추세 강도에 따라 자동 생성된 참고 전략이며, 매매 권유가 아닙니다.</div>
+</section>
+{% endif %}
+
+{% if valuation.risks %}
+<section class="block">
+<h2 class="section">주요 리스크</h2>
+<div class="risks"><ul class="bullets" style="margin:0;">
+  {% for r in valuation.risks %}<li>{{ r }}</li>{% endfor %}
+</ul></div>
+</section>
+{% endif %}
+
+{% if broker_reports or news %}
+<section class="block">
+{% if broker_reports %}
+<h2 class="section appendix">증권사 리포트·목표주가 언급</h2>
+<ul class="bullets">
+  {% for n in broker_reports %}<li>{% if n.date %}<span style="color:#999;">{{ n.date }}</span> {% endif %}{{ n.title }}{% if n.publisher %} <span style="color:#999;">· {{ n.publisher }}</span>{% endif %}</li>{% endfor %}
+</ul>
+{% endif %}
+{% if news %}
+<h2 class="section appendix">최근 뉴스</h2>
+<ul class="bullets">
+  {% for n in news %}<li>{% if n.date %}<span style="color:#999;">{{ n.date }}</span> {% endif %}{{ n.title }}{% if n.publisher %} <span style="color:#999;">· {{ n.publisher }}</span>{% endif %}</li>{% endfor %}
+</ul>
+{% endif %}
+</section>
+{% endif %}
+
+<div class="disclaimer">
+  본 보고서는 인공지능(멀티 에이전트) 시스템이 공개된 시세·재무 데이터를 바탕으로 자동 생성한 참고 자료입니다.
+  특정 종목의 매매를 권유하지 않으며, 투자 판단과 그 결과에 대한 책임은 전적으로 투자자 본인에게 있습니다.
+  데이터는 수집 시점 기준이며 오류나 지연을 포함할 수 있습니다. 투자 전 반드시 원문 공시와 전문가의 조언을 확인하시기 바랍니다.
+  {% if warnings %}<br><b>데이터 참고:</b> {{ warnings }}{% endif %}
+</div>
