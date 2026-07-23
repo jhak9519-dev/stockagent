@@ -59,6 +59,45 @@ def _mock_data() -> StockData:
         "net_income": {"2022": 5.5e13, "2023": 1.5e13, "2024": 3.4e13},
         "equity": {"2022": 3.5e14, "2023": 3.6e14, "2024": 4.0e14},
     }
+    data.earnings_date = "2026-07-31"
+
+    # 기술적 지표 표 + 지지·저항 레벨 (표 폭·줄바꿈 검증용)
+    data.technicals = {
+        "table": [
+            ("추세(이동평균)", "정배열 — 20일선 > 60일선, 단기 상승 우위"),
+            ("일목균형표", "구름대 상단 돌파, 후행스팬 양전환"),
+            ("볼린저밴드", "중심선 부근에서 상단 확장 초입"),
+            ("RSI(14)", "58.3 — 중립~강세 구간"),
+            ("MACD", "시그널선 상향 돌파(골든크로스) 임박"),
+        ],
+        "levels": {
+            "support": [("20일선", data.ma20), ("60일선", data.ma60),
+                        ("볼밴 하단", data.low_52w * 1.1)],
+            "resistance": [("전고점", data.high_52w), ("볼밴 상단", data.high_52w * 0.98),
+                           ("라운드 저항", round(data.price * 1.05, 0))],
+        },
+    }
+
+    # 투자자별 매매동향 + 일자별 최근 거래일 (일자별 수급표 폭 검증용)
+    tail = hist.tail(7)
+    daily, prev = [], None
+    rng2 = np.random.default_rng(7)
+    for ts, row in tail.iterrows():
+        c = float(row["Close"])
+        daily.append({
+            "date": ts.strftime("%Y-%m-%d"), "close": c,
+            "change": None if prev is None else (c / prev - 1) * 100,
+            "individual": float(rng2.normal(0, 300)),
+            "foreign": float(rng2.normal(0, 300)),
+            "institution": float(rng2.normal(0, 200)),
+        })
+        prev = c
+    data.trading_flows = {
+        "period": "최근 5일", "individual": -1234.5, "foreign": 2345.6,
+        "institution": -456.7, "foreign_hold_ratio": "51.2%",
+        "pension": {"direction": "순매수", "amount_100m": 320.0, "date": "2026-07-22"},
+        "daily": daily,
+    }
     return data
 
 
@@ -85,8 +124,17 @@ def main() -> None:
         valuation=Valuation(
             opinion="매수", target_price=float(data.price) * 1.2,
             upside_pct=20.0, buy_price=float(data.price) * 0.99, stop_loss=float(data.price) * 0.91,
+            buy_low=float(data.price) * 0.97, buy_high=float(data.price) * 0.99,
             rationale="실적 반등과 밸류에이션 매력을 고려할 때 상승 여력이 있습니다.",
-            risks=["업황 둔화", "환율 변동", "경쟁 심화"]),
+            risks=["업황 둔화", "환율 변동", "경쟁 심화"],
+            scenarios={
+                "bull": {"price": float(data.price) * 1.35, "prob": 25,
+                         "basis": "HBM 공급 부족 심화로 ASP 추가 상승, 가이던스 상향"},
+                "base": {"price": float(data.price) * 1.20, "prob": 50,
+                         "basis": "수요 견조 속 점진적 마진 개선으로 컨센서스 부합"},
+                "bear": {"price": float(data.price) * 0.95, "prob": 25,
+                         "basis": "메모리 업황 둔화와 환율 역풍으로 실적 하향"},
+            }),
         thesis="테스트전자는 실적 저점을 통과하며 이익 개선이 가시화되고 있습니다. 현재 밸류에이션은 과거 평균 대비 낮은 수준으로, 중기 관점의 매수 접근이 유효합니다.",
         generated_at=date.today(),
         chart_paths=chart_paths,

@@ -149,7 +149,9 @@ def render_html(report: Report) -> str:
     levels = (d.technicals or {}).get("levels") or {}
 
     def _lv(items):
-        return " · ".join(f"{n} {human_price(p, d.market)}" for n, p in items) or None
+        # 여러 지지·저항 레벨을 각 줄로 분리해 표에서 깔끔히 보이게 (한 칸에 나열 금지)
+        parts = [f"{n} {human_price(p, d.market)}" for n, p in items]
+        return Markup("<br>".join(escape(x) for x in parts)) if parts else None
 
     level_sup, level_res = _lv(levels.get("support", [])), _lv(levels.get("resistance", []))
 
@@ -173,10 +175,14 @@ def render_html(report: Report) -> str:
         def _flow(x):
             return f"{x:+,.1f}억" if x is not None else "N/A"
         if f.get("individual") is not None:
+            # 외국인: 순매수 금액과 보유율을 각 줄로 분리(한 칸에 붙여쓰지 않음)
+            foreign_val = _flow(f.get("foreign"))
+            if f.get("foreign_hold_ratio"):
+                foreign_val = Markup("%s<br><span style='color:#888;'>보유율 %s</span>") % (
+                    foreign_val, f["foreign_hold_ratio"])
             flows_rows = [
                 (f"개인 순매수 ({f.get('period', '')})", _flow(f.get("individual"))),
-                ("외국인 순매수", _flow(f.get("foreign"))
-                 + (f"  (보유율 {f['foreign_hold_ratio']})" if f.get("foreign_hold_ratio") else "")),
+                ("외국인 순매수", foreign_val),
                 ("기관 순매수", _flow(f.get("institution"))),
             ]
         p = f.get("pension") or {}

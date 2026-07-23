@@ -43,8 +43,16 @@
   img.chart { width: 100%; margin: 8px 0; border: 1px solid #eee; border-radius: 4px; }
 
   table.metrics { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.5pt; }
-  table.metrics td { border: 1px solid #e5e5e5; padding: 5px 8px; }
-  table.metrics td.k { background: #f7f7f7; color: #555; width: 22%; }
+  table.metrics td { border: 1px solid #e5e5e5; padding: 5px 8px; vertical-align: top; }
+  /* 항목명(키) 칸은 글자 길이에 맞게 최소폭으로 줄이고, 값 칸이 남는 폭을 차지 */
+  table.metrics td.k { background: #f7f7f7; color: #555; white-space: nowrap; width: 1%; }
+  /* 고정 배분 표(일자별 수급·시나리오): colgroup 비율을 그대로 사용 */
+  table.fixed { table-layout: fixed; }
+  table.fixed td { overflow: hidden; text-overflow: ellipsis; word-break: keep-all; }
+  table.fixed td.k { white-space: normal; }          /* 헤더는 줄바꿈 허용(잘림 방지) */
+  table.fixed td.num { white-space: nowrap; text-align: right; }
+  table.fixed td.dt { white-space: nowrap; text-align: center; }
+  table.scen td.cond { white-space: normal; font-size: 8.5pt; color: #444; }
 
   .risks { background: #fff6f5; border: 1px solid #f0d8d5; border-radius: 5px; padding: 10px 12px; }
   .disclaimer {
@@ -141,19 +149,21 @@
   {% for k, v in flows_rows %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
 </table>
 {% if flows_daily %}
-<table class="metrics" style="margin-top:6px;">
-  <tr><td class="k">일자</td><td class="k">종가</td><td class="k">등락률</td><td class="k">개인</td><td class="k">외국인</td><td class="k">기관</td></tr>
+<table class="metrics fixed daily" style="margin-top:6px;">
+  <colgroup><col style="width:17%"><col style="width:17%"><col style="width:14%"><col style="width:17.3%"><col style="width:17.3%"><col style="width:17.4%"></colgroup>
+  <tr><td class="k dt">일자</td><td class="k num">종가</td><td class="k num">등락률</td><td class="k num">개인</td><td class="k num">외국인</td><td class="k num">기관</td></tr>
   {% for date, close, chg, ind, fr, inst in flows_daily %}
-  <tr><td class="k">{{ date }}</td><td>{{ close }}</td><td class="{{ chg[1] }}">{{ chg[0] }}</td><td class="{{ ind[1] }}">{{ ind[0] }}</td><td class="{{ fr[1] }}">{{ fr[0] }}</td><td class="{{ inst[1] }}">{{ inst[0] }}</td></tr>
+  <tr><td class="dt">{{ date }}</td><td class="num">{{ close }}</td><td class="num {{ chg[1] }}">{{ chg[0] }}</td><td class="num {{ ind[1] }}">{{ ind[0] }}</td><td class="num {{ fr[1] }}">{{ fr[0] }}</td><td class="num {{ inst[1] }}">{{ inst[0] }}</td></tr>
   {% endfor %}
 </table>
 <div style="font-size:8pt;color:#999;margin:1px 0 6px;">· 종가·등락률과 투자자별 순매수 추정(억원) · 최근 7거래일 · 상승/순매수(빨강)·하락/순매도(파랑)</div>
 {% endif %}
 {% if flows_daily_us %}
-<table class="metrics" style="margin-top:6px;">
-  <tr><td class="k">일자</td><td class="k">종가</td><td class="k">등락률</td><td class="k">거래량</td></tr>
+<table class="metrics fixed daily" style="margin-top:6px;">
+  <colgroup><col style="width:26%"><col style="width:24%"><col style="width:22%"><col style="width:28%"></colgroup>
+  <tr><td class="k dt">일자</td><td class="k num">종가</td><td class="k num">등락률</td><td class="k num">거래량</td></tr>
   {% for date, close, chg, vol in flows_daily_us %}
-  <tr><td class="k">{{ date }}</td><td>{{ close }}</td><td class="{{ chg[1] }}">{{ chg[0] }}</td><td>{{ vol }}</td></tr>
+  <tr><td class="dt">{{ date }}</td><td class="num">{{ close }}</td><td class="num {{ chg[1] }}">{{ chg[0] }}</td><td class="num">{{ vol }}</td></tr>
   {% endfor %}
 </table>
 <div style="font-size:8pt;color:#999;margin:1px 0 6px;">· 일별 종가·등락률·거래량 · 최근 7거래일 · 상승(빨강)·하락(파랑)</div>
@@ -185,10 +195,11 @@
 </p>
 {% endif %}
 {% if scenario_rows %}
-<table class="metrics">
-  <tr><td class="k">시나리오</td><td class="k">12개월 목표가</td><td class="k">확률</td><td class="k">핵심 조건</td></tr>
+<table class="metrics fixed scen">
+  <colgroup><col style="width:15%"><col style="width:19%"><col style="width:11%"><col style="width:55%"></colgroup>
+  <tr><td class="k dt">시나리오</td><td class="k num">12개월 목표가</td><td class="k num">확률</td><td class="k">핵심 조건</td></tr>
   {% for name, price, prob, basis in scenario_rows %}
-  <tr><td>{{ name }}</td><td>{{ price }}</td><td>{{ prob }}</td><td style="font-size:8.5pt;">{{ basis }}</td></tr>
+  <tr><td class="dt">{{ name }}</td><td class="num">{{ price }}</td><td class="num">{{ prob }}</td><td class="cond">{{ basis }}</td></tr>
   {% endfor %}
 </table>
 {% if expected_line %}
