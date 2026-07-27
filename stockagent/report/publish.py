@@ -86,6 +86,7 @@ h2.section { color: #7fb2e5 !important; border-left-color: #3b6ea5 !important; }
 .body-text { line-height: 1.85 !important; }
 table.metrics td { border-color: #2a3240 !important; padding: 7px 10px !important; }
 table.metrics td.k { background: #1a222e !important; color: #8b95a7 !important; }
+table.scen td.cond { color: #b9c2d0 !important; }   /* 시나리오 핵심 조건: 다크 배경에서 읽히는 밝은색 */
 .risks { background: #241a1a !important; border-color: #43302f !important; }
 img.chart { background: #141b24; border-radius: 8px; border-color: #2a3240 !important; padding: 0; }
 .disclaimer { color: #6b7480 !important; border-top-color: #2a3240 !important; }
