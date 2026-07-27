@@ -113,6 +113,23 @@ def review(path: Path) -> list[str]:
     return issues
 
 
+def _staleness_issue(path: Path) -> str | None:
+    """가장 최근 리포트가 '오늘자'가 아니면 경고 문구 반환.
+
+    배치는 매 실행 시 오늘 날짜의 리포트를 만든다. 배치 종료 직후 실행되는
+    이 점검에서 최신 리포트 날짜가 오늘보다 과거라면 → 이번 배치가 리포트를
+    생성하지 못한 것(무인 실패)이므로, 조용한 '성공'으로 넘어가지 않게 경고한다.
+    """
+    from datetime import date
+    today = date.today().isoformat()
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
+    if m and m.group(1) < today:
+        return (f"오늘({today}) 리포트가 생성되지 않았습니다 — 배치가 리포트 생성에 "
+                f"실패했을 수 있습니다(최신 리포트: {m.group(1)}). AI 엔진(claude 로그인)·"
+                f"네트워크·스케줄러 환경을 점검하세요.")
+    return None
+
+
 def main() -> None:
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else _latest_html()
     if not path or not path.exists():
@@ -120,6 +137,11 @@ def main() -> None:
         return
 
     issues = review(path)
+    # 무인 배치 실패(오늘자 리포트 없음)를 최우선 경고로 (직접 파일 인자를 준 경우는 제외)
+    if len(sys.argv) <= 1:
+        stale = _staleness_issue(path)
+        if stale:
+            issues.insert(0, stale)
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     LOG.parent.mkdir(exist_ok=True)
     with LOG.open("a", encoding="utf-8") as f:
@@ -139,7 +161,7 @@ def main() -> None:
             from stockagent import notify
             if notify.enabled():
                 notify.send_text(f"[StockAgent] ⚠ 리포트 점검 이상 {len(issues)}건\n"
-                                 + "\n".join("· " + i[:40] for i in issues[:4]))
+                                 + "\n".join("· " + i[:90] for i in issues[:4]))
         except Exception:
             pass
     else:

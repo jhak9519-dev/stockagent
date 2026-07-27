@@ -1,0 +1,9 @@
+# Windows 배치 파일은 반드시 CRLF 줄바꿈이어야 함.
+# (cmd.exe는 LF만 있는 .bat을 오파싱해 "'음'은(는) 명령이 아닙니다" 식으로 즉시 실패함)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 그 외 텍스트는 LF 통일(파이썬·템플릿·문서)
+*.py text eol=lf
+*.j2 text eol=lf
+*.md text eol=lf

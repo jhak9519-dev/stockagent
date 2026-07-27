@@ -19,6 +19,23 @@ from typing import Any, Optional
 from .config import settings
 
 
+def _log_llm_error(msg: str) -> None:
+    """AI 엔진 호출 실패 원인을 logs/llm_errors.log 에 영구 기록.
+
+    배치의 stdout 리다이렉트가 실패해도(무인 환경 이슈) 원인이 남도록 파일에 직접 쓴다.
+    """
+    try:
+        from datetime import datetime
+
+        from .config import ROOT
+        p = ROOT / "logs" / "llm_errors.log"
+        p.parent.mkdir(exist_ok=True)
+        with p.open("a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {msg}\n")
+    except Exception:
+        pass
+
+
 class LLM:
     def __init__(self) -> None:
         self.provider = settings.active_provider()
@@ -80,18 +97,27 @@ class LLM:
             )
             # 시스템+규칙+프롬프트를 합쳐 stdin으로 전달(따옴표/줄바꿈 안전). Claude Code 구독으로 처리.
             full = f"{system}\n\n{guard}\n\n{prompt}"
-            r = subprocess.run(
-                "claude -p --output-format json",
-                input=full, capture_output=True, text=True,
-                encoding="utf-8", shell=True, timeout=180,
-            )
+            try:
+                r = subprocess.run(
+                    "claude -p --output-format json",
+                    input=full, capture_output=True, text=True,
+                    encoding="utf-8", shell=True, timeout=180,
+                )
+            except subprocess.TimeoutExpired:
+                # 무인(S4U) 세션에서 로그인/응답 지연으로 멈추는 대표 증상 — 원인 추적용 기록
+                _log_llm_error("claude -p 180초 타임아웃 — 무인 세션 로그인/응답 지연 의심(claude 재로그인 확인)")
+                raise
             if r.returncode != 0 or not (r.stdout or "").strip():
+                _log_llm_error(f"claude -p 비정상 종료 rc={r.returncode} stderr={(r.stderr or '')[:300]}")
                 return ""
             try:
                 data = json.loads(r.stdout)
             except json.JSONDecodeError:
+                _log_llm_error(f"claude -p JSON 파싱 실패: {(r.stdout or '')[:200]}")
                 return ""
             if data.get("is_error") or data.get("subtype") != "success":
+                _log_llm_error(f"claude -p 오류 subtype={data.get('subtype')} "
+                               f"status={data.get('api_error_status')} result={str(data.get('result',''))[:200]}")
                 return ""  # 미로그인/오류 → 규칙 기반 폴백
             return (data.get("result") or "").strip()
         return ""

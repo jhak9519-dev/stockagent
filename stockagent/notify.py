@@ -28,7 +28,13 @@ _MEMO_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
 
 
 def enabled() -> bool:
-    """카카오 알림 설정이 완료되어 있는지 (REST 키 + refresh token 둘 다 필요)."""
+    """카카오 알림 설정이 완료되어 있는지 (REST 키 + refresh token 둘 다 필요).
+
+    STOCKAGENT_NO_PUBLISH 가 설정되면(테스트·진단 실행) 알림을 보내지 않는다
+    — 웹 발행(publish)·이메일(mailer)과 동일한 안전 스위치.
+    """
+    if os.getenv("STOCKAGENT_NO_PUBLISH"):
+        return False
     return bool(os.getenv("KAKAO_REST_API_KEY")) and bool(os.getenv("KAKAO_REFRESH_TOKEN"))
 
 

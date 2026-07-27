@@ -14,5 +14,9 @@ set "LLM_PROVIDER=claude_code"
 if not exist logs mkdir logs
 echo ===================== US best  %date% %time% =====================>> "logs\scheduler_us.log"
 "%~dp0.venv\Scripts\python.exe" run.py --best --market US >> "logs\scheduler_us.log" 2>&1
-REM 리포트 생성 직후 자동 점검(수치 검산·구조·폴백)
+set "GEN_ERR=%errorlevel%"
+if not "%GEN_ERR%"=="0" echo [!] 리포트 생성 실패 (exit=%GEN_ERR%) - AI 엔진/네트워크/로그인 점검 필요>> "logs\scheduler_us.log"
+REM 리포트 생성 직후 자동 점검(수치 검산·구조·폴백·오늘자 리포트 유무)
 "%~dp0.venv\Scripts\python.exe" tools\daily_review.py >> "logs\scheduler_us.log" 2>&1
+REM 스케줄러 결과창에 '리포트 생성'의 실제 성공/실패를 종료코드로 노출(성공으로 가려지지 않게)
+exit /b %GEN_ERR%
